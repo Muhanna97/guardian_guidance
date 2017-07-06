@@ -1,13 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-from guidancePKG import vehicle
-from dronekit import connect, VehicleMode, LocationGlobal, LocationGlobalRelative
+from dronekit import *
+# from vehicleGlobal import vehicle
 from pymavlink import mavutil # Needed for command message definitions
 import time
 import math
 
-def arm_and_takeoff(aTargetAltitude):
+
+
+
+def vehicleFunction(vehicle, aTargetAltitude):
     """
     Arms vehicle and fly to aTargetAltitude.
     """
