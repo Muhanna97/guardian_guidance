@@ -2,9 +2,8 @@
 1. Install APM SITL: http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
 2. Install DroneKit http://python.dronekit.io/develop/installation.html
 
-3. Place this directory within the dronekit-python directory that was cloned from git
 
-4. Add the surrey field to locations.txt in ardupilot/Tools/autotest with the following line:
+3. Add the surrey field to locations.txt in ardupilot/Tools/autotest with the following line:
     SRY=49.128645,-122.7965086,100,0
 
 
