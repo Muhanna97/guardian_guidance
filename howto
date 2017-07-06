@@ -1,0 +1,36 @@
+how to get the SITL and script running
+
+---------------- Do once -------------------
+1. Install APM SITL: http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
+2. Install DroneKit http://python.dronekit.io/develop/installation.html
+
+3. Place this directory within the dronekit-python directory that was cloned from git
+
+4. Add the surrey field to locations.txt in ardupilot/Tools/autotest with the following line:
+    SRY=49.128645,-122.7965086,100,0
+
+
+-------------------- Running the Script --------------------
+1. In a terminal window, cd to ardupilot/Tools/autotest
+
+2. run:
+    python sim_vehicle.py -w -v ArduCopter --console --map --location SRY
+
+3. Open a new window, cd to dronekit-python/guardian
+4. run:
+    python guided_v7.py --connect 127.0.0.1:14551
+
+
+--------------------------- Notes ------------------------------
+
+v6 is velocity based but doesn't work (incorrect bearing and stuff)
+v7 has correct custom bearing and things
+v8 has v7 plus velocity control coupled with wp control
+v9 has obstacle
+
+
+------ flight
+connect radio and power on
+mavproxy.py --out 127.0.0.1:14550 --out 127.0.0.1:1234
+open up apm planner
+python guided_v9.py --connect 127.0.0.1:1234

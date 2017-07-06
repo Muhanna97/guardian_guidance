@@ -1,0 +1,20 @@
+have a main loop that runs at a minimum of 10Hz or something
+  check if last time is within .1 sec,
+
+  In it, go to waypoints in the search pattern, check the obstacle location
+  move if obstacle is there
+
+
+-------------- issues
+it kind of hangs when it is at the last point in the list
+
+
+------------------- todo
+get the functions into a library
+for waypoint proximity, do based on derivative instead of counter
+implement RTOS loop style thing
+
+
+------ mavproxy hack to show icons:
+display_waypoints function in mavproxy/modules/mavproxy_map/__init__.py
+add_object function in mavproxy/modules/mavproxy_map/mp_slipmap.py
