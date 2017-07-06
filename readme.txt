@@ -15,10 +15,8 @@
 
 3. Open a new window, cd to dronekit-python/guardian
 4. run:
-    python guidance.py --connect 127.0.0.1:14551
+    python guidance.py
 
-    you can also run guided_v9.py --connect 127.0.0.1:14551
-      it is the old version, "guided" is split into multiple files for easier development
 5. Currently, the script doesn't exit cleanly
     ctrl+c to kill it :D
 
@@ -43,8 +41,9 @@ This means that we can switch the drone to RTL, STABILIZE, etc. at any time (usi
 
 
 ---------------------- Relevant sections -------------------
-The step method in the checkObstacle and gotoGuardian3 classes are run repeatedly by the scheduler, according to the scheduled frequency of the task
-The code that matters starts around line 420. Above is just a bunch of funtions that will be split into a package elsewhere.
+guidance.py creates the tasks, connects and takes off
+the tasks are for guidance and obstacle proximity checking, and are defined in guardian.py
+userDefines.py has settable params that might need to be changed to tune perfomrace
 
-Some useful user params are on line 593 ish
-The obstacle location is on line 538 ish
+
+The step method in the checkObstacle and gotoGuardian3 classes are run repeatedly by the scheduler, according to the scheduled frequency of the task

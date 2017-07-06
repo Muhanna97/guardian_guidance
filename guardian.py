@@ -10,7 +10,10 @@ from math import sin, cos, atan2, asin, atan
 from math import radians as rad
 from math import degrees as deg
 import vehicleFunctions as dk
-from userDefines import * # waypoints, default velocity 
+from userDefines import * # waypoints, default velocity
+
+# Functions and classes written specifically for guardian obstacle avoidance
+# Author: Richard Arthurs
 
 def getBearingGood(currentLocation, targetLocation):
     lat1 = rad(currentLocation.lat)
@@ -31,11 +34,27 @@ class gotoGuardian3(mthread.MicroThread):
 
     def __init__(self, number, vehicleIn):
         self.num = number # for scheduler
-        self.runInterval = 0.1 # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
+        self.runInterval = float(1)/guidanceFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
         self.wpNum = 0 # current wp we're flying to
         self.lastRunTime =  dt.datetime.now()
         self.vehicle = vehicleIn
+
+    def step(self):
+        stepTimer = secondsSince(self.lastRunTime)
+        if (stepTimer >= self.runInterval):
+            print  "\r\n"
+
+            self.createwp() # create the current target wp
+            if self.doMission(): # if we can do mission (not in RTL or some other case)
+                self.go() # go to the target location
+
+            if(self.checkIfPointReached(gotoGuardian3.targetLocation)):
+                self.wpNum += 1
+
+            self.lastRunTime = dt.datetime.now()
+
     def createwp(self):
+        # assembles waypoints
         try:
             gotoGuardian3.targetLocation = dk.LocationGlobalRelative(lats[self.wpNum],longs[self.wpNum],alts[self.wpNum])
         except IndexError:
@@ -53,26 +72,12 @@ class gotoGuardian3(mthread.MicroThread):
             print self.vehicle.mode
             return 0
         elif (self.vehicle.mode == "GUIDED"):
-            gotoGuardian3.doingMission = 1
+            gotoGuardian3.doingMission = 1 # we're good to send a command
             return 1
         else:
             gotoGuardian3.doingMission = 0
             print self.vehicle.mode
             return 0
-
-    def step(self):
-        stepTimer = secondsSince(self.lastRunTime)
-        if (stepTimer >= self.runInterval):
-            print  "\r\n"
-
-            self.createwp() # create the current target wp
-            if self.doMission(): # if we can do mission (not in RTL or some other case)
-                self.go() # go to the target location
-
-            if(self.checkIfPointReached(gotoGuardian3.targetLocation)):
-                self.wpNum += 1
-
-            self.lastRunTime = dt.datetime.now()
 
     def checkIfPointReached(self,targetLocation):
         wpDistance = dk.get_distance_metres(self.vehicle.location.global_relative_frame, gotoGuardian3.targetLocation)
@@ -80,12 +85,15 @@ class gotoGuardian3(mthread.MicroThread):
         #     return 1
         # else:
         #     return 0
-        if(wpDistance < 1):
+        if(wpDistance < waypointReachedDistance):
             return 1
         else:
             return 0
 
     def go(self):
+        # this function calculates the velocity vectors and does the logic to move towards waypoints.
+        # target is the current waypoint
+
         targetLocation = gotoGuardian3.targetLocation
         currentLocation = self.vehicle.location.global_relative_frame
         targetDistance = dk.get_distance_metres(currentLocation, targetLocation)
@@ -95,7 +103,7 @@ class gotoGuardian3(mthread.MicroThread):
             if not checkObstacle.obstacleFound: # we good
                 print "Velocity control"
                 bearing = getBearingGood(self.vehicle.location.global_relative_frame,targetLocation)
-            else:
+            else: # perform slick obstacle avoid
                 print "Velocity control - obstacle avoidance"
                 obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
                 if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
@@ -104,24 +112,21 @@ class gotoGuardian3(mthread.MicroThread):
                     bearing = rad(obstacleBearing + 90)
 
             # Velocity vector creation
-            northScale = cos(bearing)
-            eastScale = sin(bearing)
-
             print "Flight bearing ", deg(bearing)
-            dk.condition_yaw(self.vehicle,deg(bearing)) #point towards travel direction
+            dk.condition_yaw(self.vehicle,deg(bearing)) #point towards travel direction - doesn't work because of difference between condition_yaw expected values and the way I define a bearing
 
-            northVelocity = defaultVelocity*northScale
-            eastVelocity = defaultVelocity*eastScale
+            northVelocity = defaultVelocity*cos(bearing)
+            eastVelocity = defaultVelocity*sin(bearing)
 
             print "Velocity components:", northVelocity," ,", eastVelocity
             print "Distance to target:", targetDistance
             print "Obstacle bearing: ", checkObstacle.obstacleBearing
             print "Obstacle is ", checkObstacle.obstacleDistance, "metres away"
 
-            dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0)
+            dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
             return 0
 
-        elif(targetDistance <= 20): # if close to target, go right there
+        elif(targetDistance <= targetGuidanceThreshold): # if close to target, go right there
             print "Going straight to target"
             print "Distance to target: ", targetDistance
             self.vehicle.simple_goto(targetLocation)
@@ -129,15 +134,15 @@ class gotoGuardian3(mthread.MicroThread):
 
 class checkObstacle(mthread.MicroThread):
     obstacleFound = 0
-    obstacleLocation = LocationGlobalRelative(49.128400, -122.798044, 30)
+    obstacleLocation = LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
     obstacleBearing = 0
     obstacleDistance = 0
     def __init__(self, number, vehicleIn):
         self.num = number
         self.lastRunTime =  dt.datetime.now()
-        self.interceptBearing = 0
-        self.runInterval = 0.1 # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
-        self.avoidRadius = 50
+        self.interceptBearing = 0 # bearing to obstacle at intercept radius
+        self.runInterval = float(1)/checkObstacleFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
+        self.avoidRadius = obstacle_avoidRadius
         self.vehicle = vehicleIn
 
     def step(self):
@@ -151,7 +156,7 @@ class checkObstacle(mthread.MicroThread):
 
             if self.canAvoid(): # only avoid obstacles if appropriate
                 if (checkObstacle.obstacleDistance <= self.avoidRadius):
-                    if self.interceptBearing == 0:
+                    if self.interceptBearing == 0: # if it's the first encounter, record the intercept bearing
                         self.interceptBearing = checkObstacle.obstacleBearing
                     checkObstacle.obstacleFound = 1
 
