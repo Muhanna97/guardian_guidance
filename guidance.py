@@ -1,18 +1,26 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from guidancePKG import vehicle
-from dronekit import connect, VehicleMode, LocationGlobal, LocationGlobalRelative, Vehicle
-print vehicle.mode
-# --------------------------------- works with vehicleglobal
-# from dronekit import *
-# from pymavlink import mavutil # Needed for command message definitions
-# import time
-# import math
-# import datetime as dt
-#
-# def thing():
-#     vehicle = connect("127.0.0.1:14551", wait_ready=True)
-#
-#     print vehicle.mode
-#
-#     return vehicle
+from dronekit import Vehicle
+import connectToDrone
+import vehicleFunctions as dk
+import guardian
+import mthread
+import scheduler
+
+mydrone = connectToDrone.makeConnection()
+print mydrone
+print mydrone.mode
+
+dk.arm_and_takeoff(mydrone, 30)
+
+print "Team Guardian AUVSI Guidance Script"
+
+# create cooperatively scheduled threads
+mt2 = guardian.gotoGuardian3(1, mydrone)
+mt3 = guardian.checkObstacle(2, mydrone)
+
+ms = scheduler.Scheduler()
+ms.add_microthread(mt2)
+ms.add_microthread(mt3)
+
+# run the threads - currently no exit from this, so LAND and CLOSE section will not be reached
+# ctrl+c the script to kill it
+ms.run()

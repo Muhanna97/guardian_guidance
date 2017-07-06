@@ -15,7 +15,10 @@
 
 3. Open a new window, cd to dronekit-python/guardian
 4. run:
-    python guided_v7.py --connect 127.0.0.1:14551
+    python guidance.py --connect 127.0.0.1:14551
+
+    you can also run guided_v9.py --connect 127.0.0.1:14551
+      it is the old version, "guided" is split into multiple files for easier development
 5. Currently, the script doesn't exit cleanly
     ctrl+c to kill it :D
 
