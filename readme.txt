@@ -1,11 +1,16 @@
 ---------------- Do once -------------------
 1. Install APM SITL: http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
 2. Install DroneKit http://python.dronekit.io/develop/installation.html
+3. Clone this repo
 
 
-3. Add the surrey field to locations.txt in ardupilot/Tools/autotest with the following line:
+4. Add the surrey field to locations.txt in ardupilot/Tools/autotest with the following line:
     SRY=49.128645,-122.7965086,100,0
 
+5. You should have the following: 
+    username/dronekit-python
+    username/guardian_guidance
+    username/ardupilot
 
 -------------------- Running the Script --------------------
 1. In a terminal window, cd to ardupilot/Tools/autotest
@@ -13,7 +18,8 @@
 2. run:
     python sim_vehicle.py -w -v ArduCopter --console --map --location SRY
 
-3. Open a new window, cd to dronekit-python/guardian
+3. Open a new window, cd to guardian_guidance
+
 4. run:
     python guidance.py
 
