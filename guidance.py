@@ -14,8 +14,9 @@ dk.arm_and_takeoff(mydrone, 30)
 print "Team Guardian AUVSI Guidance Script"
 
 # create cooperatively scheduled threads
-mt1 = guardian.checkObstacle(2, mydrone)
-mt2 = guardian.gotoGuardian3(1, mydrone)
+mt1 = guardian.gotoGuardian3(1, mydrone)
+mt2 = guardian.checkObstacle(2, mydrone)
+
 
 ms = scheduler.Scheduler()
 ms.add_microthread(mt1)
