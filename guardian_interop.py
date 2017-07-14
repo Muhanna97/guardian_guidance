@@ -5,6 +5,7 @@ import math
 import datetime as dt
 from datetime import timedelta
 import mthread
+import json
 
 from math import sin, cos, atan2, asin, atan
 from math import radians as rad
@@ -89,16 +90,47 @@ class gotoGuardian3(mthread.MicroThread):
             self.lastRunTime = dt.datetime.now()
 
     def createwp(self):
-        # assembles waypoints
+        with open('surrey_mission.json') as data_file_one: #chage file name to missions for use
+            waypoint_data = json.load(data_file_one)
+        inc1 = 0
+        mission_dict = {}
+        mission_lat = []
+        mission_lon = []
+        mission_alt = []
+        while (inc1 < 3):
+            inc2 = 0
+            while (inc2 < len(waypoint_data["mission_waypoints"])):
+                if (inc1 == 0):
+                    lat = waypoint_data["mission_waypoints"][inc2]["latitude"]
+                    mission_lat.append(lat)
+                if (inc1 == 1):
+                    lon = waypoint_data["mission_waypoints"][inc2]["longitude"]
+                    mission_lon.append(lon)
+                if (inc1 == 2):
+                    alt = waypoint_data["mission_waypoints"][inc2]["altitude_msl"]
+                    mission_alt.append(alt)
+                inc2 = inc2 + 1
+            inc1 = inc1 + 1
+        inc1 = 0
+        while (inc1 < 3):
+            if (inc1 == 0):
+                mission_dict[inc1] = mission_lat
+            if (inc1 == 1):
+                mission_dict[inc1] = mission_lon
+            if (inc1 == 2):
+                mission_dict[inc1] = mission_alt
+            inc1 = inc1 + 1
+
+                        # assembles waypoints
         try:
-            gotoGuardian3.targetLocation = dk.LocationGlobalRelative(lats[self.wpNum],longs[self.wpNum],alts[self.wpNum])
+            gotoGuardian3.targetLocation = dk.LocationGlobalRelative(mission_dict[0][self.wpNum],mission_dict[1][self.wpNum],mission_dict[2][self.wpNum])
         except IndexError:
             if gotoGuardian3.doingMission == 1:
                 # only set to RTL once in case we want to manually take over after the iniaial RTL command
                 self.vehicle.mode = VehicleMode("RTL") # RTL if we're out of waypoints. Kind of nasty but it'll work
                 print "No more waypoints, RTL"
-            self.runInterval = 5
-            gotoGuardian3.doingMission = 0
+                self.runInterval = 5
+                gotoGuardian3.doingMission = 0
 
     def doMission(self):
         # before sending commands to go somewhere, check if we can do mission
