@@ -4,11 +4,23 @@ import vehicleFunctions as dk
 import guardian
 import mthread
 import scheduler
+import userDefines
 
 mydrone = connectToDrone.makeConnection()
 print mydrone
 print mydrone.mode
 
+
+# print "\nPrint all parameters (iterate `vehicle.parameters`):"
+# for key, value in mydrone.parameters.iteritems():
+#     print " Key:%s Value:%s" % (key,value)
+
+
+@mydrone.parameters.on_attribute(userDefines.DROP_PARAM)
+def decorated_thr_min_callback(self, attr_name, value):
+    print " PARAMETER CALLBACK: %s changed to: %s" % (attr_name, value)
+
+guardian.close_Dropper(mydrone)
 dk.arm_and_takeoff(mydrone, 30)
 
 print "Team Guardian AUVSI Guidance Script"

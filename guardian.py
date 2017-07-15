@@ -1,9 +1,7 @@
 from dronekit import connect, VehicleMode, LocationGlobal, LocationGlobalRelative, Vehicle, Command
 from pymavlink import mavutil # Needed for command message definitions
 import time
-import math
 import datetime as dt
-from datetime import timedelta
 import mthread
 
 from math import sin, cos, atan2, asin, atan
@@ -14,39 +12,25 @@ from userDefines import * # waypoints, default velocity
 
 # Functions and classes written specifically for guardian obstacle avoidance
 # Author: Richard Arthurs
+def close_Dropper(vehicle):
+    print "Closing dropper"
+    vehicle.parameters[DROP_PARAM] = 57
 
 def drop_guided(vehicle):
 # sends a command to drop the bottle in guided mode.
 # This is preferred since it doesn't require a mode change.
     print "Dropping bottle!"
+    vehicle.parameters[DROP_PARAM] = 0 # set parameter allowing us to change the servo value from DroneKit
     msg = vehicle.message_factory.command_long_encode(
         0, 0,    # target system, target component
-        mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
-        0, #confirmation
-        servoNum,    # param 1, yaw in degrees
-        servoOpen,          # param 2, yaw speed deg/s
-        0,          # param 3, direction -1 ccw, 1 cw
-        0, # param 4, relative offset 1, absolute angle 0
-        0, 0, 0)    # param 5 ~ 7 not used
-        # send command to vehicle
+        mavutil.mavlink.MAV_CMD_DO_SET_SERVO, 0,
+        servoNum,    # servo number (userDefines)
+        servoOpen,          # servo open PWM value
+        0, 0, 0, 0, 0)    # not used
+
     vehicle.send_mavlink(msg)
-
-def drop_auto(vehicle):
-    cmds = vehicle.commands # get current commands
-    cmds.clear()
-    cmds.upload()
-            # the 4th param might need to be 0
-            # it doesn't like that the servo open is over 255
-    cmd1=Command( 0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_DO_SET_SERVO, servoNum, servoOpen, 0, 0, 0, 0, 0, 0, 0)
-
-    cmds.add(cmd1)
-    cmds.upload() # Send commands
-    print "Changing mode to AUTO"
-    vehicle.mode = VehicleMode("AUTO")
-    print "Dropping bottle!"
-    print "Changing mode to GUIDED"
-    vehicle.mode = VehicleMode("GUIDED")
-
+    time.sleep(1)
+    close_Dropper(vehicle)
 
 def getBearingGood(currentLocation, targetLocation):
     lat1 = rad(currentLocation.lat)
@@ -72,7 +56,6 @@ class gotoGuardian3(mthread.MicroThread):
         self.lastRunTime =  dt.datetime.now()
         self.vehicle = vehicleIn
         self.dropped = 0
-        self.pause = 0
 
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
@@ -97,9 +80,10 @@ class gotoGuardian3(mthread.MicroThread):
                 # only set to RTL once in case we want to manually take over after the iniaial RTL command
                 self.vehicle.mode = VehicleMode("RTL") # RTL if we're out of waypoints. Kind of nasty but it'll work
                 print "No more waypoints, RTL"
+                time.sleep(2)  # give it time to send the RTL
+
             self.runInterval = 5
             gotoGuardian3.doingMission = 0
-            time.sleep(2) # give it time to send the RTL
 
     def doMission(self):
         # before sending commands to go somewhere, check if we can do mission
@@ -148,8 +132,11 @@ class gotoGuardian3(mthread.MicroThread):
 
         if self.wpNum == dropWaypointNum and self.dropped == 0:
             self.dropped = 1
-            self.pause = 20 #wait 5 seconds
+            print "Reached drop location, hovering.."
+            self.stop(2)
             drop_guided(self.vehicle)
+            self.stop(2)
+
 
         if (targetDistance > targetGuidanceThreshold):
             if not checkObstacle.obstacleFound: # we good
@@ -175,15 +162,7 @@ class gotoGuardian3(mthread.MicroThread):
             print "     Obstacle bearing: ", checkObstacle.obstacleBearing
             print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
 
-            if not self.pause == 0:
-                print "Pausing"
-                self.pause = float(self.pause - self.runInterval)
-                print self.pause
-
-                if self.pause < 0:
-                    self.pause = 0
-            else: # no pause
-                dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
+            dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
             return 0
 
         elif(targetDistance <= targetGuidanceThreshold): # if close to target, go right there

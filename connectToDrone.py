@@ -1,4 +1,5 @@
 from dronekit import *
+import userDefines
 from pymavlink import mavutil # Needed for command message definitions
 import time
 import math
@@ -9,5 +10,5 @@ import datetime as dt
 
 
 def makeConnection():
-    vehicle = connect("127.0.0.1:14551", wait_ready=True)
+    vehicle = connect(userDefines.UDPPort, wait_ready=True)
     return vehicle
