@@ -45,9 +45,36 @@ def secondsSince(prevTime):
     convertSec = timetoCheck.seconds + (timetoCheck.microseconds/1e6)
     return convertSec
 
+def createWpFromInterop(type):
+    baseLats = missionDict['wp_lats']
+    baseLongs = missionDict['wp_longs']
+    baseAlts = missionDict['wp_alts']
+
+    # insert the drop location as a waypoint according to drop location pt (defined in mission), and drop altitude
+    # (defined in userDefines)
+    baseLats.insert(dropWaypointNum-1, missionDict['drop_lat'])
+    baseLongs.insert(dropWaypointNum-1, missionDict['drop_long'])
+    baseAlts.insert(dropWaypointNum-1, dropHeight)
+
+    if type == "lats":
+        return baseLats
+    elif type == "longs":
+        return baseLongs
+    elif type == "alts":
+        return baseAlts
+    else:
+        return "Incorrect argument to createWpFromInterop"
+
+
 class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
     doingMission = 1
+
+
+    # comment this out to use predefined positions
+    lats = createWpFromInterop('lats')
+    longs = createWpFromInterop('longs')
+    alts = createWpFromInterop('alts')
 
     def __init__(self, number, vehicleIn):
         self.num = number # for scheduler
@@ -74,7 +101,7 @@ class gotoGuardian3(mthread.MicroThread):
     def createwp(self):
         # assembles waypoints
         try:
-            gotoGuardian3.targetLocation = dk.LocationGlobalRelative(lats[self.wpNum],longs[self.wpNum],alts[self.wpNum])
+            gotoGuardian3.targetLocation = dk.LocationGlobalRelative(gotoGuardian3.lats[self.wpNum], gotoGuardian3.longs[self.wpNum], gotoGuardian3.alts[self.wpNum])
         except IndexError:
             if gotoGuardian3.doingMission == 1:
                 # only set to RTL once in case we want to manually take over after the iniaial RTL command
@@ -173,7 +200,13 @@ class gotoGuardian3(mthread.MicroThread):
 
 class checkObstacle(mthread.MicroThread):
     obstacleFound = 0
-    obstacleLocation = LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
+
+    obstacleLocation = LocationGlobalRelative(missionDict['obstacle_lat'], missionDict['obstacle_long'], 30)
+    avoidRadius = obstacle_avoidRadius + missionDict['obstacle_lat']
+
+    # obstacleLocation = LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
+    # avoidRadius = obstacle_avoidRadius
+
     obstacleBearing = 0
     obstacleDistance = 0
     def __init__(self, number, vehicleIn):
@@ -181,7 +214,6 @@ class checkObstacle(mthread.MicroThread):
         self.lastRunTime =  dt.datetime.now()
         self.interceptBearing = 0 # bearing to obstacle at intercept radius
         self.runInterval = float(1)/checkObstacleFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
-        self.avoidRadius = obstacle_avoidRadius
         self.vehicle = vehicleIn
 
     def step(self):
@@ -194,7 +226,7 @@ class checkObstacle(mthread.MicroThread):
             self.obstacleTargetDistance = dk.get_distance_metres(checkObstacle.obstacleLocation, gotoGuardian3.targetLocation)
 
             if self.canAvoid(): # only avoid obstacles if appropriate
-                if (checkObstacle.obstacleDistance <= self.avoidRadius):
+                if (checkObstacle.obstacleDistance <= checkObstacle.avoidRadius):
                     if self.interceptBearing == 0: # if it's the first encounter, record the intercept bearing
                         self.interceptBearing = checkObstacle.obstacleBearing
                     checkObstacle.obstacleFound = 1
@@ -213,7 +245,7 @@ class checkObstacle(mthread.MicroThread):
             return 0
         if self.vehicle.mode == "RTL":
             return 0
-        elif  self.obstacleTargetDistance <= self.avoidRadius:
+        elif  self.obstacleTargetDistance <= checkObstacle.avoidRadius:
             print "Obstacle is close to waypoint. Proceeding to waypoint. Collision possible."
             print "Obstacle to waypoint distance:", self.obstacleTargetDistance
             return 0

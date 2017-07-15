@@ -1,13 +1,15 @@
 # all of the user settable params for guidance
 # Author: Richard Arthurs
 import importWP
+import importInterop
 
 defaultVelocity = 4 # this velocity is split into North and East components to control direction of copter
 
 UDPPort = "127.0.0.1:14551"
 
 # test for interop integration
-testthing = importWP.returnThing()
+# missionDict = importWP.getInteropJSON()
+missionDict = importInterop.importFromInterop()
 
 # distance thresholds
 targetGuidanceThreshold = 20    # at this distance (m) or below, vehicle will use simple_goto to reach waypoint instead of custom velocity control
@@ -24,12 +26,13 @@ DROP_PARAM = 'SERVO7_FUNCTION'  # either RC7_ or SERVO7_
 servoNum = 7
 servoOpen = 1880    # pwm for Dropping
 dropWaypointNum = 1     # the copter will drop when it reaches this waypoint
+dropHeight = 20
 
 
 # ---------------------- simple mission 1 -------------------------------------------
-lats = [49.129285, 49.129127, 49.128815]
-longs = [-122.795733, -122.797900, -122.797214]
-alts = [30,30,30]
+# lats = [49.129285, 49.129127, 49.128815]
+# longs = [-122.795733, -122.797900, -122.797214]
+# alts = [30,30,30]
 
 obstacleLat = 49.130204
 obstacleLon = -122.792854

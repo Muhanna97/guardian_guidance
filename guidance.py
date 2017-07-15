@@ -5,6 +5,7 @@ import guardian
 import mthread
 import scheduler
 import userDefines
+import importInterop
 
 mydrone = connectToDrone.makeConnection()
 print mydrone
@@ -15,6 +16,9 @@ print mydrone.mode
 # for key, value in mydrone.parameters.iteritems():
 #     print " Key:%s Value:%s" % (key,value)
 
+# print userDefines.missionDict
+
+# importInterop.importFromInterop()
 
 @mydrone.parameters.on_attribute(userDefines.DROP_PARAM)
 def decorated_thr_min_callback(self, attr_name, value):
