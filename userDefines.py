@@ -3,7 +3,7 @@
 
 
 
-defaultVelocity = 5 # this velocity is split into North and East components to control direction of copter
+defaultVelocity = 4 # this velocity is split into North and East components to control direction of copter
 
 # Waypoint data - will loop through all of these
 
@@ -43,10 +43,10 @@ waypointReachedDistance = 2 # if we are within this many metres of waypoint, con
 
 #Task Frequencies
 # tasks will run this many times per second, or slower (if something is blocking, such as using a time delay command - wHich we WON'T DO!)
-checkObstacleFrequency = 10
-guidanceFrequency = 10 # rate (Hz) that velocity components are sent to vehicle
+checkObstacleFrequency = 2
+guidanceFrequency = 2 # rate (Hz) that velocity components are sent to vehicle
 
 # Dropping servo params
 servoNum = 7
-servoOpen = 1900 # pwm for Dropping
-dropWaypointNum = 7 # the copter will drop when it reaches this waypoint
+servoOpen = 1880 # pwm for Dropping
+dropWaypointNum = 2 # the copter will drop when it reaches this waypoint

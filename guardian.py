@@ -99,6 +99,7 @@ class gotoGuardian3(mthread.MicroThread):
                 print "No more waypoints, RTL"
             self.runInterval = 5
             gotoGuardian3.doingMission = 0
+            time.sleep(2) # give it time to send the RTL
 
     def doMission(self):
         # before sending commands to go somewhere, check if we can do mission
@@ -117,14 +118,24 @@ class gotoGuardian3(mthread.MicroThread):
 
     def checkIfPointReached(self,targetLocation):
         wpDistance = dk.get_distance_metres(self.vehicle.location.global_relative_frame, gotoGuardian3.targetLocation)
-        # if(wpDistance <= targetDistance*0.01 or wpDistance < 0.3):
-        #     return 1
-        # else:
-        #     return 0
+
         if(wpDistance < waypointReachedDistance):
-            return 1
+            if self.doMission():
+                print "Reached waypoint, pausing..."
+                self.stop(2)
+                print "Resuming flight"
+                return 1
         else:
             return 0
+
+    def stop(self, sleepTime): # hover for a bit
+        if self.doMission():
+            dk.send_ned_velocity(self.vehicle, 0, 0,0)  # sends the velocity components to the copter
+            print "Hovering...."
+            time.sleep(sleepTime)
+        else:
+            print "Not able to do mission."
+
 
     def go(self):
         # this function calculates the velocity vectors and does the logic to move towards waypoints.
@@ -140,7 +151,7 @@ class gotoGuardian3(mthread.MicroThread):
             self.pause = 20 #wait 5 seconds
             drop_guided(self.vehicle)
 
-        if (targetDistance > 20):
+        if (targetDistance > targetGuidanceThreshold):
             if not checkObstacle.obstacleFound: # we good
                 print "Velocity control"
                 bearing = getBearingGood(self.vehicle.location.global_relative_frame,targetLocation)
@@ -153,16 +164,16 @@ class gotoGuardian3(mthread.MicroThread):
                     bearing = rad(obstacleBearing + 90)
 
             # Velocity vector creation
-            print "Flight bearing ", deg(bearing)
+            print "Distance to target:", targetDistance
+            print "     Flight bearing ", deg(bearing)
             dk.condition_yaw(self.vehicle,deg(bearing)) #point towards travel direction - doesn't work because of difference between condition_yaw expected values and the way I define a bearing
 
             northVelocity = defaultVelocity*cos(bearing)
             eastVelocity = defaultVelocity*sin(bearing)
 
-            print "Velocity components: ",northVelocity,", ",eastVelocity
-            print "Distance to target:", targetDistance
-            print "Obstacle bearing: ", checkObstacle.obstacleBearing
-            print "Obstacle is ", checkObstacle.obstacleDistance, "metres away"
+            print "     Velocity components: ",northVelocity,", ",eastVelocity
+            print "     Obstacle bearing: ", checkObstacle.obstacleBearing
+            print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
 
             if not self.pause == 0:
                 print "Pausing"
