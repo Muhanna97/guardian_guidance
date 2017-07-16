@@ -18,14 +18,14 @@ print mydrone.mode
 
 # print userDefines.missionDict
 
-# importInterop.importFromInterop()
+importInterop.importFromInterop()
 
 @mydrone.parameters.on_attribute(userDefines.DROP_PARAM)
 def decorated_thr_min_callback(self, attr_name, value):
     print " PARAMETER CALLBACK: %s changed to: %s" % (attr_name, value)
 
 guardian.close_Dropper(mydrone)
-dk.arm_and_takeoff(mydrone, 30)
+dk.arm_and_takeoff(mydrone, 28)
 
 print "Team Guardian AUVSI Guidance Script"
 

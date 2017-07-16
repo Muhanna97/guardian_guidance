@@ -6,7 +6,7 @@ import warnings
 import serial.tools.list_ports
 
 def main():
-    device = "127.0.0.1:14550"
+    device = "127.0.0.1:14549"
 
     proxy_mavlink(device)
 
@@ -44,9 +44,6 @@ def proxy_mavlink(device):
     # Continuously forward packets.
     while True:
         # Get packet.
-        print 'Response from Arduino: '
-        print ser.readline()
-
         msg = mav.recv_match(type='GLOBAL_POSITION_INT',
                              blocking=True,
                              timeout=5)
@@ -54,7 +51,11 @@ def proxy_mavlink(device):
             print "Did not receive MAVLink packet for over 5 seconds."
 
         if msg is not None:
-            print ser.write(("{},{},{}\n".format(msg.lat/1e7, msg.lon/1e7, msg.alt/1e3)))
+            ser.write(("{},{},{}\n".format(msg.lat/1e7, msg.lon/1e7, msg.alt/1e3)))
+
+            log = open("tracker_data_log2.txt", "a")
+            log.write(("{},{},{}\n".format(msg.lat/1e7, msg.lon/1e7, msg.alt/1e3)))
+            log.close()
 
         #print ("{},{},{}".format(msg.lat, msg.lon, msg.alt))
 

@@ -70,11 +70,11 @@ class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
     doingMission = 1
 
-
     # comment this out to use predefined positions
     lats = createWpFromInterop('lats')
     longs = createWpFromInterop('longs')
     alts = createWpFromInterop('alts')
+
 
     def __init__(self, number, vehicleIn):
         self.num = number # for scheduler
@@ -101,7 +101,8 @@ class gotoGuardian3(mthread.MicroThread):
     def createwp(self):
         # assembles waypoints
         try:
-            gotoGuardian3.targetLocation = dk.LocationGlobalRelative(gotoGuardian3.lats[self.wpNum], gotoGuardian3.longs[self.wpNum], gotoGuardian3.alts[self.wpNum])
+                # gotoGuardian3.targetLocation = dk.LocationGlobalRelative(lats[self.wpNum], longs[self.wpNum], alts[self.wpNum])
+                gotoGuardian3.targetLocation = dk.LocationGlobalRelative(gotoGuardian3.lats[self.wpNum], gotoGuardian3.longs[self.wpNum], gotoGuardian3.alts[self.wpNum])
         except IndexError:
             if gotoGuardian3.doingMission == 1:
                 # only set to RTL once in case we want to manually take over after the iniaial RTL command
@@ -116,12 +117,12 @@ class gotoGuardian3(mthread.MicroThread):
         # before sending commands to go somewhere, check if we can do mission
         # for example, if we have been told to RTL by the pilot, don't try to go anywhere
         # also check if we're in a pause condition
-        if gotoGuardian3.doingMission == 0:
+        if (self.vehicle.mode == "GUIDED"):
+            gotoGuardian3.doingMission = 1  # we're good to send a command
+            return 1
+        elif gotoGuardian3.doingMission == 0:
             print self.vehicle.mode
             return 0
-        elif (self.vehicle.mode == "GUIDED"):
-            gotoGuardian3.doingMission = 1 # we're good to send a command
-            return 1
         else:
             gotoGuardian3.doingMission = 0
             print self.vehicle.mode
@@ -172,10 +173,10 @@ class gotoGuardian3(mthread.MicroThread):
             else: # perform slick obstacle avoid
                 print "Velocity control - obstacle avoidance"
                 obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
-                if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
-                    bearing = rad(obstacleBearing - 90)
-                else:
-                    bearing = rad(obstacleBearing + 90)
+                # if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
+                bearing = rad(obstacleBearing - 90)
+                # else:
+                #     bearing = rad(obstacleBearing + 90)
 
             # Velocity vector creation
             print "Distance to target:", targetDistance
@@ -202,7 +203,7 @@ class checkObstacle(mthread.MicroThread):
     obstacleFound = 0
 
     obstacleLocation = LocationGlobalRelative(missionDict['obstacle_lat'], missionDict['obstacle_long'], 30)
-    avoidRadius = obstacle_avoidRadius + missionDict['obstacle_lat']
+    avoidRadius = obstacle_avoidRadius + (missionDict['obstacle_radius']/3)
 
     # obstacleLocation = LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
     # avoidRadius = obstacle_avoidRadius

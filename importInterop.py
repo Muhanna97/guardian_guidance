@@ -28,6 +28,7 @@ def importFromInterop():
     moving_obstacles = obstacles[1]
 
     guardianWp = []
+    guardianSearch = []
 
     print stationary_obstacles
 
@@ -35,10 +36,13 @@ def importFromInterop():
     for Waypoint in mission.mission_waypoints:
         guardianWp.append(Waypoint)
     for Waypoint in mission.search_grid_points:
-        guardianWp.append(Waypoint)
+        guardianSearch.append(Waypoint)
 
     guardianWp.sort(key=lambda x: x.order, reverse=False) # sort low>high
+    guardianSearch.sort(key=lambda x: x.order, reverse=False) # sort low>high
 
+    for Waypoint in guardianSearch:
+        guardianWp.append(Waypoint)
 # construct dict to sent to guidance
 
     lats = []
@@ -57,7 +61,7 @@ def importFromInterop():
              'drop_long': mission.air_drop_pos.longitude,
              'obstacle_lat': stationary_obstacles[0].latitude,
              'obstacle_long':  stationary_obstacles[0].longitude,
-             'obstacle_radius': stationary_obstacles.cylinder_radius,
+             'obstacle_radius': stationary_obstacles[0].cylinder_radius,
              }
 
     return wpout
