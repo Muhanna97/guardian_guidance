@@ -25,8 +25,10 @@ guidanceFrequency = 2   # rate (Hz) that velocity components are sent to vehicle
 DROP_PARAM = 'RC7_FUNCTION'  # either RC7_ or SERVO7_
 servoNum = 7
 servoOpen = 1200    # pwm for Dropping
-dropWaypointNum = 3     # the copter will drop when it reaches this waypoint
+dropWaypointNum = 2     # the copter will drop when it reaches this waypoint
 dropHeight = 20
+dropTriggerRepeats = 2 # number of times to trigger the drop. Attempt to reduce snags.
+
 
 # lats = [49.128811,49.129285, 49.129127, 49.128815]
 # longs = [-122.796816,-122.795733, -122.797900, -122.797214]

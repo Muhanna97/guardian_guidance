@@ -3,7 +3,6 @@ from pymavlink import mavutil # Needed for command message definitions
 import time
 import datetime as dt
 import mthread
-
 from math import sin, cos, atan2, asin, atan
 from math import radians as rad
 from math import degrees as deg
@@ -19,17 +18,22 @@ def close_Dropper(vehicle):
 def drop_guided(vehicle):
 # sends a command to drop the bottle in guided mode.
     print "Dropping bottle!"
-    vehicle.parameters[DROP_PARAM] = 0 # set parameter allowing us to change the servo value from DroneKit
-    msg = vehicle.message_factory.command_long_encode(
-        0, 0,    # target system, target component
-        mavutil.mavlink.MAV_CMD_DO_SET_SERVO, 0,
-        servoNum,    # servo number (userDefines)
-        servoOpen,          # servo open PWM value
-        0, 0, 0, 0, 0)    # not used
 
-    vehicle.send_mavlink(msg)
-    time.sleep(1)
-    close_Dropper(vehicle)
+    runs = 0 # so we can trigger the servo multiple times
+
+    while runs < dropTriggerRepeats:
+        vehicle.parameters[DROP_PARAM] = 0 # set parameter allowing us to change the servo value from DroneKit
+        msg = vehicle.message_factory.command_long_encode(
+            0, 0,    # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, 0,
+            servoNum,    # servo number (userDefines)
+            servoOpen,          # servo open PWM value
+            0, 0, 0, 0, 0)    # not used
+
+        vehicle.send_mavlink(msg)
+        time.sleep(1)
+        close_Dropper(vehicle)
+        runs += 1
 
 def getBearingGood(currentLocation, targetLocation):
     lat1 = rad(currentLocation.lat)
@@ -89,8 +93,7 @@ def setAvoidRadius():
 
 class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
-    doingMission = 1
-
+    doingMission = 0
 
     def __init__(self, number, vehicleIn):
         self.num = number # for scheduler
@@ -103,7 +106,6 @@ class gotoGuardian3(mthread.MicroThread):
         self.lats = createFlightData('lats')
         self.longs = createFlightData('longs')
         self.alts = createFlightData('alts')
-
 
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
@@ -131,13 +133,13 @@ class gotoGuardian3(mthread.MicroThread):
                 print "No more waypoints, RTL"
                 time.sleep(2)  # give it time to send the RTL
 
-            self.runInterval = 5
+            self.runInterval = 5 # we can run this less frequently now that we're just RTL'ing
             gotoGuardian3.doingMission = 0
 
     def doMission(self):
         # before sending commands to go somewhere, check if we can do mission
         # for example, if we have been told to RTL by the pilot, don't try to go anywhere
-        # also check if we're in a pause condition
+
         if (self.vehicle.mode == "GUIDED"):
             gotoGuardian3.doingMission = 1  # we're good to send a command
             return 1
@@ -156,6 +158,15 @@ class gotoGuardian3(mthread.MicroThread):
             if self.doMission():
                 print "Reached waypoint, pausing..."
                 self.stop(2)
+
+                # bottle drop logic
+                if self.wpNum == dropWaypointNum-1 and self.dropped == 0:
+                    self.dropped = 1
+                    print "Reached drop location, hovering.."
+                    self.stop(2)
+                    drop_guided(self.vehicle)
+                    self.stop(2)
+
                 print "Resuming flight"
                 return 1
         else:
@@ -179,14 +190,6 @@ class gotoGuardian3(mthread.MicroThread):
         targetDistance = dk.get_distance_metres(currentLocation, targetLocation)
         print "Going to waypoint: ", (self.wpNum+1)  # human format (1 indexed)
 
-        if self.wpNum == dropWaypointNum and self.dropped == 0:
-            self.dropped = 1
-            print "Reached drop location, hovering.."
-            self.stop(2)
-            drop_guided(self.vehicle)
-            self.stop(2)
-
-
         if (targetDistance > targetGuidanceThreshold):
             if not checkObstacle.obstacleFound: # we good
                 print "Velocity control"
@@ -195,6 +198,8 @@ class gotoGuardian3(mthread.MicroThread):
             else: # perform slick obstacle avoid
                 print "Velocity control - obstacle avoidance"
                 obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
+
+                # THIS IS BACKWARDS FOR OUR CONDITION
                 # if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
                 bearing = rad(obstacleBearing - 90)
                 # else:
@@ -203,7 +208,7 @@ class gotoGuardian3(mthread.MicroThread):
             # Velocity vector creation
             print "Distance to target:", targetDistance
             print "     Flight bearing ", deg(bearing)
-            dk.condition_yaw(self.vehicle,deg(bearing)) #point towards travel direction - doesn't work because of difference between condition_yaw expected values and the way I define a bearing
+            dk.condition_yaw(self.vehicle,deg(bearing))
 
             northVelocity = defaultVelocity*cos(bearing)
             eastVelocity = defaultVelocity*sin(bearing)
@@ -220,6 +225,7 @@ class gotoGuardian3(mthread.MicroThread):
             print "Distance to target: ", targetDistance
             self.vehicle.simple_goto(targetLocation)
             return 0
+
 
 class checkObstacle(mthread.MicroThread):
     obstacleFound = 0
@@ -263,9 +269,9 @@ class checkObstacle(mthread.MicroThread):
         # also skip if waypoint is within obstacle avoid radius. Would rather hit obstacle than miss waypoint.
         if gotoGuardian3.doingMission == 0:
             return 0
-        if self.vehicle.mode == "RTL":
+        if not self.vehicle.mode == "GUIDED":
             return 0
-        elif  self.obstacleTargetDistance <= checkObstacle.avoidRadius:
+        elif self.obstacleTargetDistance <= checkObstacle.avoidRadius:
             print "Obstacle is close to waypoint. Proceeding to waypoint. Collision possible."
             print "Obstacle to waypoint distance:", self.obstacleTargetDistance
             return 0
