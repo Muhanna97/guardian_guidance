@@ -44,35 +44,52 @@ def secondsSince(prevTime):
     convertSec = timetoCheck.seconds + (timetoCheck.microseconds/1e6)
     return convertSec
 
-def createWpFromInterop(type):
-    baseLats = missionDict['wp_lats']
-    baseLongs = missionDict['wp_longs']
-    baseAlts = missionDict['wp_alts']
+def createFlightData(type):
+    # if we are using data from interop (userDefines)
+    if usingInterop:
+        baseLats = missionDict['wp_lats']
+        baseLongs = missionDict['wp_longs']
+        baseAlts = missionDict['wp_alts']
 
-    # insert the drop location as a waypoint according to drop location pt (defined in mission), and drop altitude
-    # (defined in userDefines)
-    baseLats.insert(dropWaypointNum-1, missionDict['drop_lat'])
-    baseLongs.insert(dropWaypointNum-1, missionDict['drop_long'])
-    baseAlts.insert(dropWaypointNum-1, dropHeight)
+        # insert the drop location as a waypoint according to drop location pt (defined in mission), and drop altitude
+        # (defined in userDefines)
+        baseLats.insert(dropWaypointNum-1, missionDict['drop_lat'])
+        baseLongs.insert(dropWaypointNum-1, missionDict['drop_long'])
+        baseAlts.insert(dropWaypointNum-1, dropHeight)
 
-    if type == "lats":
-        return baseLats
-    elif type == "longs":
-        return baseLongs
-    elif type == "alts":
-        return baseAlts
+        if type == "lats":
+            return baseLats
+        elif type == "longs":
+            return baseLongs
+        elif type == "alts":
+            return baseAlts
+        else:
+            return "Incorrect argument to createWpFromInterop"
+    else: # using built in values
+        if type == "lats":
+            return lats
+        elif type == "longs":
+            return longs
+        elif type == "alts":
+            return alts
+        else:
+            return "Incorrect argument to createWpFromInterop"
+
+def setObstacleLocation():
+    if usingInterop:
+        return LocationGlobalRelative(missionDict['obstacle_lat'], missionDict['obstacle_long'], 30)
     else:
-        return "Incorrect argument to createWpFromInterop"
+        return LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
 
+def setAvoidRadius():
+    if usingInterop:
+        return obstacle_avoidRadius + (missionDict['obstacle_radius'] / 3)
+    else:
+      return obstacle_avoidRadius
 
 class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
     doingMission = 1
-
-    # comment this out to use predefined positions
-    lats = createWpFromInterop('lats')
-    longs = createWpFromInterop('longs')
-    alts = createWpFromInterop('alts')
 
 
     def __init__(self, number, vehicleIn):
@@ -83,16 +100,21 @@ class gotoGuardian3(mthread.MicroThread):
         self.vehicle = vehicleIn
         self.dropped = 0
 
+        self.lats = createFlightData('lats')
+        self.longs = createFlightData('longs')
+        self.alts = createFlightData('alts')
+
+
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
         if (stepTimer >= self.runInterval):
             print  "\r\n"
 
-            self.createwp() # create the current target wp
-            if self.doMission(): # if we can do mission (not in RTL or some other case)
-                self.go() # go to the target location
+            self.createwp()  # create the current target wp
+            if self.doMission():  # if we can do mission (not in RTL or some other case)
+                self.go()  # go to the target location
 
-            if(self.checkIfPointReached(gotoGuardian3.targetLocation)):
+            if self.checkIfPointReached():
                 self.wpNum += 1
 
             self.lastRunTime = dt.datetime.now()
@@ -101,7 +123,7 @@ class gotoGuardian3(mthread.MicroThread):
         # assembles waypoints
         try:
                 # gotoGuardian3.targetLocation = dk.LocationGlobalRelative(lats[self.wpNum], longs[self.wpNum], alts[self.wpNum])
-                gotoGuardian3.targetLocation = dk.LocationGlobalRelative(gotoGuardian3.lats[self.wpNum], gotoGuardian3.longs[self.wpNum], gotoGuardian3.alts[self.wpNum])
+                gotoGuardian3.targetLocation = dk.LocationGlobalRelative(self.lats[self.wpNum], self.longs[self.wpNum], self.alts[self.wpNum])
         except IndexError:
             if gotoGuardian3.doingMission == 1:
                 # only set to RTL once in case we want to manually take over after the iniaial RTL command
@@ -122,12 +144,12 @@ class gotoGuardian3(mthread.MicroThread):
         elif gotoGuardian3.doingMission == 0:
             print self.vehicle.mode
             return 0
-        else:
+        else:  # basically if we are in anything but guided, don't send movement commands
             gotoGuardian3.doingMission = 0
             print self.vehicle.mode
             return 0
 
-    def checkIfPointReached(self,targetLocation):
+    def checkIfPointReached(self):
         wpDistance = dk.get_distance_metres(self.vehicle.location.global_relative_frame, gotoGuardian3.targetLocation)
 
         if(wpDistance < waypointReachedDistance):
@@ -155,7 +177,7 @@ class gotoGuardian3(mthread.MicroThread):
         targetLocation = gotoGuardian3.targetLocation
         currentLocation = self.vehicle.location.global_relative_frame
         targetDistance = dk.get_distance_metres(currentLocation, targetLocation)
-        print "Going to waypoint: ", (self.wpNum+1) # human format (1 indexed)
+        print "Going to waypoint: ", (self.wpNum+1)  # human format (1 indexed)
 
         if self.wpNum == dropWaypointNum and self.dropped == 0:
             self.dropped = 1
@@ -169,6 +191,7 @@ class gotoGuardian3(mthread.MicroThread):
             if not checkObstacle.obstacleFound: # we good
                 print "Velocity control"
                 bearing = getBearingGood(self.vehicle.location.global_relative_frame,targetLocation)
+
             else: # perform slick obstacle avoid
                 print "Velocity control - obstacle avoidance"
                 obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
@@ -200,15 +223,12 @@ class gotoGuardian3(mthread.MicroThread):
 
 class checkObstacle(mthread.MicroThread):
     obstacleFound = 0
-
-    obstacleLocation = LocationGlobalRelative(missionDict['obstacle_lat'], missionDict['obstacle_long'], 30)
-    avoidRadius = obstacle_avoidRadius + (missionDict['obstacle_radius']/3)
-
-    # obstacleLocation = LocationGlobalRelative(obstacleLat, obstacleLon, obstacleAlt) # pull from userDefines
-    # avoidRadius = obstacle_avoidRadius
-
     obstacleBearing = 0
     obstacleDistance = 0
+
+    obstacleLocation = setObstacleLocation()
+    avoidRadius = setAvoidRadius()
+
     def __init__(self, number, vehicleIn):
         self.num = number
         self.lastRunTime =  dt.datetime.now()

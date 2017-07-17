@@ -6,8 +6,10 @@ defaultVelocity = 7 # this velocity is split into North and East components to c
 
 UDPPort = "127.0.0.1:14540"
 
-# test for interop integration
-missionDict = importInterop.importFromInterop()
+usingInterop = 0
+
+if usingInterop:
+    missionDict = importInterop.importFromInterop()
 
 # distance thresholds
 targetGuidanceThreshold = 30    # at this distance (m) or below, vehicle will use simple_goto to reach waypoint instead of custom velocity control

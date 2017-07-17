@@ -3,6 +3,7 @@ from dronekit import *
 from pymavlink import mavutil # Needed for command message definitions
 import time
 import math
+import sys
 
 
 def arm_only(vehicle):
@@ -20,7 +21,13 @@ def arm_only(vehicle):
     print "Arming motors"
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
-    vehicle.armed = True
+
+    # take user input to arm vehicle to prevent it from chopping someone's arm off :)
+    confirmArm = raw_input("Permission to arm motors? (yes/no)")
+    if confirmArm == "yes" or confirmArm == "YES":
+        vehicle.armed = True
+    else:
+        print "Please arm vehicle to continue"
 
 
     while not vehicle.armed:
@@ -42,8 +49,16 @@ def arm_and_takeoff(vehicle, aTargetAltitude):
     print "Arming motors"
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
-    vehicle.armed = True
-    time.sleep(1)
+
+    # take user input to arm vehicle to prevent it from chopping someone's arm off :)
+    confirmArm = raw_input("Type \"yes\" to ARM motors: ")
+    if confirmArm == "yes" or confirmArm == "YES":
+        vehicle.armed = True
+    else:
+        print "Please arm vehicle to continue"
+
+
+    time.sleep(1) # in IRL there's a delay so we need to wait
 
 
     while not vehicle.armed:

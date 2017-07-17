@@ -18,7 +18,7 @@ print mydrone.mode
 
 # print userDefines.missionDict
 
-importInterop.importFromInterop()
+# importInterop.importFromInterop()
 
 @mydrone.parameters.on_attribute(userDefines.DROP_PARAM)
 def decorated_thr_min_callback(self, attr_name, value):
