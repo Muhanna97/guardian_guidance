@@ -38,6 +38,6 @@ ms = scheduler.Scheduler()
 ms.add_microthread(mt1)
 ms.add_microthread(mt2)
 
-# run the threads - currently no exit from this, so LAND and CLOSE section will not be reached
+# run the threads - currently no exit from this
 # ctrl+c the script to kill it
 ms.run()

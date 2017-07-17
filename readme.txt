@@ -53,3 +53,16 @@ userDefines.py has settable params that might need to be changed to tune perfomr
 
 
 The step method in the checkObstacle and gotoGuardian3 classes are run repeatedly by the scheduler, according to the scheduled frequency of the task
+
+---------------------- Running a flight -----------------------
+connect to the stream:
+    mavproxy.py --out=127.0.0.1:14550 --out=127.0.0.1:14551 --out=127.0.0.1:14540 --out=127.0.0.1:14549 --out=127.0.0.1:14541^C
+
+with that, connect to tracker in guardian directory
+    sudo python antenna_data.py
+
+can start up apm planner for monitoring
+
+connect to interop somehow (will die once you connect to guidance :()
+
+take off to 30m in loiter. Start guidance script

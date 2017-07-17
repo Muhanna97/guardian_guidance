@@ -18,7 +18,6 @@ def close_Dropper(vehicle):
 
 def drop_guided(vehicle):
 # sends a command to drop the bottle in guided mode.
-# This is preferred since it doesn't require a mode change.
     print "Dropping bottle!"
     vehicle.parameters[DROP_PARAM] = 0 # set parameter allowing us to change the servo value from DroneKit
     msg = vehicle.message_factory.command_long_encode(

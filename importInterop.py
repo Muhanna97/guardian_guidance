@@ -30,7 +30,7 @@ def importFromInterop():
     guardianWp = []
     guardianSearch = []
 
-    print stationary_obstacles
+    # print stationary_obstacles
 
     # use the waypoints and search grid points to generate waypoints to fly
     for Waypoint in mission.mission_waypoints:
@@ -41,10 +41,11 @@ def importFromInterop():
     guardianWp.sort(key=lambda x: x.order, reverse=False) # sort low>high
     guardianSearch.sort(key=lambda x: x.order, reverse=False) # sort low>high
 
+    # add the search pattern points after the mission waypoints
     for Waypoint in guardianSearch:
         guardianWp.append(Waypoint)
-# construct dict to sent to guidance
 
+# construct dict to sent to guidance
     lats = []
     longs = []
     alts = []

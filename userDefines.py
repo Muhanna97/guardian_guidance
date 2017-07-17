@@ -1,6 +1,5 @@
 # all of the user settable params for guidance
 # Author: Richard Arthurs
-import importWP
 import importInterop
 
 defaultVelocity = 7 # this velocity is split into North and East components to control direction of copter
@@ -8,7 +7,6 @@ defaultVelocity = 7 # this velocity is split into North and East components to c
 UDPPort = "127.0.0.1:14540"
 
 # test for interop integration
-# missionDict = importWP.getInteropJSON()
 missionDict = importInterop.importFromInterop()
 
 # distance thresholds
