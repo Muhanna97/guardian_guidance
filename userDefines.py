@@ -6,28 +6,33 @@ defaultVelocity = 7 # this velocity is split into North and East components to c
 
 UDPPort = "127.0.0.1:14540"
 
-usingInterop = 0
+usingInterop = 1
 
 if usingInterop:
     missionDict = importInterop.importFromInterop()
 
-# distance thresholds
+# ----------------- DISTANCE THRESHOLDS --------------------
 targetGuidanceThreshold = 30    # at this distance (m) or below, vehicle will use simple_goto to reach waypoint instead of custom velocity control
-obstacle_avoidRadius = 15   # if we are within this many metres from obstacle point, we will avoid it
+obstacle_avoidRadius = 30   # if we are within this many metres from obstacle point, we will avoid it
 waypointReachedDistance = 2     # if we are within this many metres of waypoint, consider it reached (typically 2m in actual operation)
 
-#Task Frequencies
-# tasks will run this many times per second, or slower (if something is blocking, such as using a time delay command - wHich we WON'T DO!)
+# --------------  TASK FREQUENCIES ---------------------
+# tasks will run this many times per second, or slower (if something is blocking,
+# such as using a time delay command, such as our hovers)
 checkObstacleFrequency = 2
 guidanceFrequency = 2   # rate (Hz) that velocity components are sent to vehicle
 
-# Dropping servo params
+# ------------------ DROPPING SERVO PARAMS -----------------------
 DROP_PARAM = 'RC7_FUNCTION'  # either RC7_ or SERVO7_
 servoNum = 7
 servoOpen = 1200    # pwm for Dropping
-dropWaypointNum = 2     # the copter will drop when it reaches this waypoint
+dropWaypointNum = 1     # the copter will drop when it reaches this waypoint
 dropHeight = 20
 dropTriggerRepeats = 2 # number of times to trigger the drop. Attempt to reduce snags.
+
+# ------------------ EMERGENT OBJECT ------------------------
+emergent_searchRadius = 30
+emergent_searchAltitude = 25
 
 
 # lats = [49.128811,49.129285, 49.129127, 49.128815]
@@ -40,6 +45,9 @@ alts = [30,30,30]
 obstacleLat = 49.130204
 obstacleLon = -122.792854
 obstacleAlt = 30
+
+emergentLat = 49.129124
+emergentLong = -122.795433
 
 # -----------------------  long mission ----------------------------------------
 # lats = [49.129553, 49.129507, 49.129017, 49.128874, 49.129736, 49.128963, 49.129098]

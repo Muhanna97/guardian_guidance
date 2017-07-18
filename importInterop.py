@@ -30,7 +30,7 @@ def importFromInterop():
     guardianWp = []
     guardianSearch = []
 
-    # print stationary_obstacles
+    print mission
 
     # use the waypoints and search grid points to generate waypoints to fly
     for Waypoint in mission.mission_waypoints:
@@ -63,6 +63,8 @@ def importFromInterop():
              'obstacle_lat': stationary_obstacles[0].latitude,
              'obstacle_long':  stationary_obstacles[0].longitude,
              'obstacle_radius': stationary_obstacles[0].cylinder_radius,
+             'emergent_lat': mission.emergent_last_known_pos.latitude,
+             'emergent_long': mission.emergent_last_known_pos.longitude
              }
 
     return wpout

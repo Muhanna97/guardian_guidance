@@ -8,6 +8,7 @@ from math import radians as rad
 from math import degrees as deg
 import vehicleFunctions as dk
 from userDefines import * # waypoints, default velocity
+import emergentObject as emergent
 
 # Functions and classes written specifically for guardian obstacle avoidance
 # Author: Richard Arthurs
@@ -48,8 +49,7 @@ def secondsSince(prevTime):
     convertSec = timetoCheck.seconds + (timetoCheck.microseconds/1e6)
     return convertSec
 
-def createFlightData(type):
-    # if we are using data from interop (userDefines)
+def createFlightData():
     if usingInterop:
         baseLats = missionDict['wp_lats']
         baseLongs = missionDict['wp_longs']
@@ -61,23 +61,26 @@ def createFlightData(type):
         baseLongs.insert(dropWaypointNum-1, missionDict['drop_long'])
         baseAlts.insert(dropWaypointNum-1, dropHeight)
 
-        if type == "lats":
-            return baseLats
-        elif type == "longs":
-            return baseLongs
-        elif type == "alts":
-            return baseAlts
-        else:
-            return "Incorrect argument to createWpFromInterop"
-    else: # using built in values
-        if type == "lats":
-            return lats
-        elif type == "longs":
-            return longs
-        elif type == "alts":
-            return alts
-        else:
-            return "Incorrect argument to createWpFromInterop"
+        # deal with the emergent obstacle generated wps
+        emergentFirstWP = len(baseLats) + 1
+        emergent_waypoints = emergent.calcEmergent(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius)
+
+        baseLats.extend(emergent_waypoints['lats'])
+        baseLongs.extend(emergent_waypoints['longs'])
+        baseAlts.extend(emergent_waypoints['alts'])
+
+        return {'lats': baseLats, 'longs': baseLongs, 'alts': baseAlts, 'emergentFirstWp': emergentFirstWP}
+
+    else:  # using built in values
+        emergentFirstWP = len(lats) + 1
+        emergent_waypoints = emergent.calcEmergent(emergentLat, emergentLong, emergent_searchAltitude, emergent_searchRadius)
+
+        lats.extend(emergent_waypoints['lats'])
+        longs.extend(emergent_waypoints['longs'])
+        alts.extend(emergent_waypoints['alts'])
+
+        return {'lats': lats, 'longs': longs, 'alts': alts, 'emergentFirstWp': emergentFirstWP}
+
 
 def setObstacleLocation():
     if usingInterop:
@@ -96,16 +99,18 @@ class gotoGuardian3(mthread.MicroThread):
     doingMission = 0
 
     def __init__(self, number, vehicleIn):
-        self.num = number # for scheduler
+        self.num = number  # for scheduler
         self.runInterval = float(1)/guidanceFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
-        self.wpNum = 0 # current wp we're flying to
-        self.lastRunTime =  dt.datetime.now()
+        self.wpNum = 4  # current wp we're flying to
+        self.lastRunTime = dt.datetime.now()
         self.vehicle = vehicleIn
         self.dropped = 0
 
-        self.lats = createFlightData('lats')
-        self.longs = createFlightData('longs')
-        self.alts = createFlightData('alts')
+        flight_data = createFlightData()
+        self.lats = flight_data['lats']
+        self.longs = flight_data['longs']
+        self.alts = flight_data['alts']
+        self.emergentFirstWP = flight_data['emergentFirstWp']
 
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
@@ -168,6 +173,10 @@ class gotoGuardian3(mthread.MicroThread):
                     self.stop(2)
 
                 print "Resuming flight"
+
+                if self.emergentFirstWP == self.wpNum -1:
+                    print "Beginning emergent object search"
+                    self.stop(2)
                 return 1
         else:
             return 0
@@ -190,6 +199,7 @@ class gotoGuardian3(mthread.MicroThread):
         targetDistance = dk.get_distance_metres(currentLocation, targetLocation)
         print "Going to waypoint: ", (self.wpNum+1)  # human format (1 indexed)
 
+
         if (targetDistance > targetGuidanceThreshold):
             if not checkObstacle.obstacleFound: # we good
                 print "Velocity control"
@@ -204,6 +214,11 @@ class gotoGuardian3(mthread.MicroThread):
                 bearing = rad(obstacleBearing - 90)
                 # else:
                 #     bearing = rad(obstacleBearing + 90)
+
+            if checkObstacle.obstacleSlow:
+                defaultVelocity = 3
+            else:
+                defaultVelocity = 7
 
             # Velocity vector creation
             print "Distance to target:", targetDistance
@@ -234,6 +249,7 @@ class checkObstacle(mthread.MicroThread):
 
     obstacleLocation = setObstacleLocation()
     avoidRadius = setAvoidRadius()
+    obstacleSlow = 0
 
     def __init__(self, number, vehicleIn):
         self.num = number
@@ -261,6 +277,11 @@ class checkObstacle(mthread.MicroThread):
                     checkObstacle.obstacleFound = 0
                 else:
                     checkObstacle.obstacleFound = 0
+
+                if checkObstacle.obstacleDistance <= 100:
+                    checkObstacle.obstacleSlow = 1
+                else:
+                    checkObstacle.obstacleSlow = 0
 
                 self.lastRunTime = dt.datetime.now()
 
