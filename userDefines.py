@@ -7,7 +7,7 @@ defaultVelocity = 4 # this velocity is split into North and East components to c
 UDPPort = "127.0.0.1:14540"
 
 usingInterop = 1
-startWpNum = 4 # start at zero for normal mission
+startWpNum = 0 # start at zero for normal mission
 
 if usingInterop:
     missionDict = importInterop.importFromInterop()
@@ -39,6 +39,7 @@ dropTriggerRepeats = 2 # number of times to trigger the drop. Attempt to reduce 
 # ------------------ EMERGENT OBJECT ------------------------
 emergent_searchRadius = 30
 emergent_searchAltitude = 25
+emergent_numSpirals = 1
 
 
 # lats = [49.128811,49.129285, 49.129127, 49.128815]

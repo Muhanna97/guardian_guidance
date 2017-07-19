@@ -57,6 +57,17 @@ def importFromInterop():
         longs.append(Waypoint.longitude)
         alts.append(Waypoint.altitude_msl)
 
+# search dict
+    searchlats = []
+    searchlongs = []
+    searchalts = []
+
+    for Waypoint in guardianSearch:
+        searchlats.append(Waypoint.latitude)
+        searchlongs.append(Waypoint.longitude)
+        searchalts.append(Waypoint.altitude_msl)
+
+
     wpout = {'wp_lats': lats,
              'wp_longs': longs,
              'wp_alts': alts,
@@ -66,7 +77,10 @@ def importFromInterop():
              'obstacle_long':  stationary_obstacles[0].longitude,
              'obstacle_radius': stationary_obstacles[0].cylinder_radius,
              'emergent_lat': mission.emergent_last_known_pos.latitude,
-             'emergent_long': mission.emergent_last_known_pos.longitude
+             'emergent_long': mission.emergent_last_known_pos.longitude,
+             'search_lats': searchlats,
+             'search_longs': searchlongs,
+             'search_alts': searchalts
              }
 
     return wpout

@@ -8,7 +8,8 @@ from math import radians as rad
 from math import degrees as deg
 import vehicleFunctions as dk
 from userDefines import * # waypoints, default velocity
-import emergentObject as emergent
+# import emergentObject as emergent
+import emergentObject2 as emergent2
 import numpy
 
 # Functions and classes written specifically for guardian obstacle avoidance
@@ -57,6 +58,8 @@ def createFlightData():
         baseLongs = missionDict['wp_longs']
         baseAlts = missionDict['wp_alts']
 
+        print "BASE LATITUDES: ", baseLats
+
         # insert the drop location as a waypoint according to drop location pt (defined in mission), and drop altitude
         # (defined in userDefines)
         baseLats.insert(dropWaypointNum-1, missionDict['drop_lat'])
@@ -65,8 +68,14 @@ def createFlightData():
 
         # deal with the emergent obstacle generated wps
         emergentFirstWP = len(baseLats) + 1
-        emergent_waypoints = emergent.calcEmergent(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius)
+        # emergent_waypoints = emergent.calcEmergent(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius)
 
+        baseLats.append(missionDict['emergent_lat'])
+        baseLongs.append(missionDict['emergent_long'])
+        baseAlts.append(emergent_searchAltitude)
+
+
+        emergent_waypoints = emergent2.calcEmergentSearch(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius,emergent_numSpirals)
         baseLats.extend(emergent_waypoints['lats'])
         baseLongs.extend(emergent_waypoints['longs'])
         baseAlts.extend(emergent_waypoints['alts'])
