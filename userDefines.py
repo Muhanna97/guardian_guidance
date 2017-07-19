@@ -7,6 +7,7 @@ defaultVelocity = 7 # this velocity is split into North and East components to c
 UDPPort = "127.0.0.1:14540"
 
 usingInterop = 1
+startWpNum = 4 # start at zero
 
 if usingInterop:
     missionDict = importInterop.importFromInterop()

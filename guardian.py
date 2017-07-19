@@ -9,6 +9,7 @@ from math import degrees as deg
 import vehicleFunctions as dk
 from userDefines import * # waypoints, default velocity
 import emergentObject as emergent
+import numpy
 
 # Functions and classes written specifically for guardian obstacle avoidance
 # Author: Richard Arthurs
@@ -37,6 +38,7 @@ def drop_guided(vehicle):
         runs += 1
 
 def getBearingGood(currentLocation, targetLocation):
+    # returns in radians!
     lat1 = rad(currentLocation.lat)
     lat2 = rad(targetLocation.lat)
     long1 = rad(currentLocation.lon)
@@ -94,6 +96,39 @@ def setAvoidRadius():
     else:
       return obstacle_avoidRadius
 
+def locationAlongBearing(from_location, to_location, distanceOut):
+    #http://www.movable-type.co.uk/scripts/latlong.html#destPoint
+    bearing = getBearingGood(from_location, to_location)
+    print "degrees", bearing*180/3.14159
+    print from_location
+    print to_location
+    R = 6378137.0
+
+    latitude = asin(sin(rad(from_location.lat))*cos(distanceOut/R) + cos(rad(from_location.lat))*sin(distanceOut/R)*cos(bearing))
+    longitude = rad(from_location.lon) + atan2(sin(bearing)*sin(distanceOut/R)*cos(rad(from_location.lat)),cos(distanceOut/R)-sin(rad(from_location.lat))*sin(latitude))
+
+    return LocationGlobalRelative(deg(latitude), deg(longitude), from_location.alt)
+
+def distance_to_intercept(drone_location, obstacle_location, avoid_radius, flight_bearing):
+    # uses the law of cosines to determine a radius out to place the waypoint
+    # along an intercept radius from the obstacle
+
+    b = dk.get_distance_metres(drone_location, obstacle_location)
+    c = avoid_radius
+    obstacle_bearing = getBearingGood(drone_location, obstacle_location)
+
+    c_rad = obstacle_bearing - flight_bearing
+
+    term1 = -2*b*cos(c_rad)
+    term0 = -(c**2 - b**2)
+
+    print "obs dist:", b, "avoid radius:", c, "obs bearing: ", deg(obstacle_bearing), "flight bearing: ", deg(flight_bearing)
+    print term1, term0
+    distances = numpy.roots([1, term1, term0])
+    print min(distances)
+    print "Distance results::::::::::::::::::::", distances
+    return min(distances)
+
 class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
     doingMission = 0
@@ -101,7 +136,7 @@ class gotoGuardian3(mthread.MicroThread):
     def __init__(self, number, vehicleIn):
         self.num = number  # for scheduler
         self.runInterval = float(1)/guidanceFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
-        self.wpNum = 4  # current wp we're flying to
+        self.wpNum = startWpNum  # current wp we're flying to
         self.lastRunTime = dt.datetime.now()
         self.vehicle = vehicleIn
         self.dropped = 0
@@ -205,34 +240,37 @@ class gotoGuardian3(mthread.MicroThread):
                 print "Velocity control"
                 bearing = getBearingGood(self.vehicle.location.global_relative_frame,targetLocation)
 
-            else: # perform slick obstacle avoid
-                print "Velocity control - obstacle avoidance"
-                obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
+                # Velocity vector creation
+                print "Distance to target:", targetDistance
+                print "     Flight bearing ", deg(bearing)
+                dk.condition_yaw(self.vehicle,deg(bearing))
 
-                # THIS IS BACKWARDS FOR OUR CONDITION
-                # if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
-                bearing = rad(obstacleBearing - 90)
-                # else:
-                #     bearing = rad(obstacleBearing + 90)
+                northVelocity = defaultVelocity*cos(bearing)
+                eastVelocity = defaultVelocity*sin(bearing)
+
+                print "     Velocity components: ",northVelocity,", ",eastVelocity
+                print "     Obstacle bearing: ", checkObstacle.obstacleBearing
+                print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
+
+                dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
+
+
+            # else: # perform slick obstacle avoid
+            #     print "Velocity control - obstacle avoidance"
+            #     obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
+            #
+            #     # # THIS IS BACKWARDS FOR OUR CONDITION
+            #     # # if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
+            #     # bearing = rad(obstacleBearing - 90)
+            #     # # else:
+            #     # #     bearing = rad(obstacleBearing + 90)
 
             if checkObstacle.obstacleSlow:
-                defaultVelocity = 3
-            else:
-                defaultVelocity = 7
+                # fly to intercept point on buffer radius from obstacle
+                print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
+                interceptLocation = locationAlongBearing(self.vehicle.location.global_relative_frame, targetLocation, checkObstacle.intercept_out)
+                self.vehicle.simple_goto(interceptLocation)
 
-            # Velocity vector creation
-            print "Distance to target:", targetDistance
-            print "     Flight bearing ", deg(bearing)
-            dk.condition_yaw(self.vehicle,deg(bearing))
-
-            northVelocity = defaultVelocity*cos(bearing)
-            eastVelocity = defaultVelocity*sin(bearing)
-
-            print "     Velocity components: ",northVelocity,", ",eastVelocity
-            print "     Obstacle bearing: ", checkObstacle.obstacleBearing
-            print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
-
-            dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
             return 0
 
         elif(targetDistance <= targetGuidanceThreshold): # if close to target, go right there
@@ -250,6 +288,7 @@ class checkObstacle(mthread.MicroThread):
     obstacleLocation = setObstacleLocation()
     avoidRadius = setAvoidRadius()
     obstacleSlow = 0
+    intercept_out = 0
 
     def __init__(self, number, vehicleIn):
         self.num = number
@@ -278,8 +317,12 @@ class checkObstacle(mthread.MicroThread):
                 else:
                     checkObstacle.obstacleFound = 0
 
+                flight_bearing = getBearingGood(currentLocation, gotoGuardian3.targetLocation)
+
                 if checkObstacle.obstacleDistance <= 100:
                     checkObstacle.obstacleSlow = 1
+                    checkObstacle.intercept_out = distance_to_intercept(currentLocation, checkObstacle.obstacleLocation, checkObstacle.avoidRadius, flight_bearing)
+
                 else:
                     checkObstacle.obstacleSlow = 0
 
