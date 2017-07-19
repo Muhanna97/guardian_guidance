@@ -127,7 +127,7 @@ def distance_to_intercept(drone_location, obstacle_location, avoid_radius, fligh
     distances = numpy.roots([1, term1, term0])
     print min(distances)
     print "Distance results::::::::::::::::::::", distances
-    return min(distances)
+    return distances
 
 class gotoGuardian3(mthread.MicroThread):
     targetLocation = LocationGlobalRelative(49.130629, -122.793948, 100) # Initializing, will be changed later
@@ -146,6 +146,7 @@ class gotoGuardian3(mthread.MicroThread):
         self.longs = flight_data['longs']
         self.alts = flight_data['alts']
         self.emergentFirstWP = flight_data['emergentFirstWp']
+        self.encountered = 0
 
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
@@ -254,22 +255,56 @@ class gotoGuardian3(mthread.MicroThread):
 
                 dk.send_ned_velocity(self.vehicle,northVelocity,eastVelocity,0) # sends the velocity components to the copter
 
-
-            # else: # perform slick obstacle avoid
-            #     print "Velocity control - obstacle avoidance"
-            #     obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
-            #
-            #     # # THIS IS BACKWARDS FOR OUR CONDITION
-            #     # # if checkObstacle.obstacleLocation.lat >= targetLocation.lat:
-            #     # bearing = rad(obstacleBearing - 90)
-            #     # # else:
-            #     # #     bearing = rad(obstacleBearing + 90)
-
-            if checkObstacle.obstacleSlow:
+            else: #obstacle
                 # fly to intercept point on buffer radius from obstacle
-                print "     Obstacle is ", checkObstacle.obstacleDistance, "metres away"
-                interceptLocation = locationAlongBearing(self.vehicle.location.global_relative_frame, targetLocation, checkObstacle.intercept_out)
-                self.vehicle.simple_goto(interceptLocation)
+                if self.encountered == 0: #first time being by obstacle
+                    interceptLocation = locationAlongBearing(self.vehicle.location.global_relative_frame, targetLocation, min(checkObstacle.intercept_out))
+                    exitLocation = locationAlongBearing(self.vehicle.location.global_relative_frame, targetLocation, max(checkObstacle.intercept_out))
+                    print "Distance to intercept waypoint: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation)
+
+                    self.vehicle.simple_goto(interceptLocation)
+                    self.encountered = 1
+
+                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation) > waypointReachedDistance:
+                        print "Distance to intercept waypoint: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation)
+                        self.vehicle.simple_goto(interceptLocation) # resend since connection sometimes drops
+                        time.sleep(0.5)
+
+                    print "Hovering at intercept waypoint!"
+                    self.stop(2)
+
+                    deriv_ExitDistance = 100
+                    prev_ExitDistance = 1000
+
+                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation) > gotoExitDistance:
+                        if deriv_ExitDistance > 0:
+                            print "Velocity control - obstacle avoidance"
+                            exitDistance = dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation)
+                            print " Distance to exit waypoint:", exitDistance
+
+                            obstacleBearing = deg(getBearingGood(self.vehicle.location.global_relative_frame,checkObstacle.obstacleLocation))
+                            bearing = rad(obstacleBearing - 90)
+                            northVelocity = circleSpeed * cos(bearing)
+                            eastVelocity = circleSpeed * sin(bearing)
+                            dk.send_ned_velocity(self.vehicle, northVelocity, eastVelocity, 0)
+                            deriv_ExitDistance = prev_ExitDistance - exitDistance
+                            print " Deriv:", deriv_ExitDistance
+                            prev_ExitDistance = exitDistance
+                            time.sleep(0.5)
+                        else:
+                            break
+
+                    self.stop(2)
+                    print "Going to exit waypoint!"
+                    self.vehicle.simple_goto(exitLocation)
+
+                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation) > waypointReachedDistance:
+                        print "Distance to exit waypoint: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation)
+                        self.vehicle.simple_goto(exitLocation)
+                        time.sleep(0.5)
+
+                    print "Hovering at exit waypoint!"
+                    self.stop(2)
 
             return 0
 
@@ -287,7 +322,6 @@ class checkObstacle(mthread.MicroThread):
 
     obstacleLocation = setObstacleLocation()
     avoidRadius = setAvoidRadius()
-    obstacleSlow = 0
     intercept_out = 0
 
     def __init__(self, number, vehicleIn):
@@ -296,6 +330,7 @@ class checkObstacle(mthread.MicroThread):
         self.interceptBearing = 0 # bearing to obstacle at intercept radius
         self.runInterval = float(1)/checkObstacleFrequency # will run every runInterval seconds (or longer if something blocks) - allows dynamic reschedule
         self.vehicle = vehicleIn
+        self.encountered =0
 
     def step(self):
         stepTimer = secondsSince(self.lastRunTime)
@@ -307,24 +342,18 @@ class checkObstacle(mthread.MicroThread):
             self.obstacleTargetDistance = dk.get_distance_metres(checkObstacle.obstacleLocation, gotoGuardian3.targetLocation)
 
             if self.canAvoid(): # only avoid obstacles if appropriate
-                if (checkObstacle.obstacleDistance <= checkObstacle.avoidRadius):
-                    if self.interceptBearing == 0: # if it's the first encounter, record the intercept bearing
-                        self.interceptBearing = checkObstacle.obstacleBearing
-                    checkObstacle.obstacleFound = 1
-
-                elif(checkObstacle.obstacleFound == 1 and (abs(checkObstacle.obstacleBearing - self.interceptBearing) >= 180)): # breakout condition - we have gone over 180 degrees around the obstacle
-                    checkObstacle.obstacleFound = 0
-                else:
-                    checkObstacle.obstacleFound = 0
-
-                flight_bearing = getBearingGood(currentLocation, gotoGuardian3.targetLocation)
-
-                if checkObstacle.obstacleDistance <= 100:
-                    checkObstacle.obstacleSlow = 1
-                    checkObstacle.intercept_out = distance_to_intercept(currentLocation, checkObstacle.obstacleLocation, checkObstacle.avoidRadius, flight_bearing)
+                if (checkObstacle.obstacleDistance <= obstacle_gotoInterceptDistance):
+                    # if self.interceptBearing == 0: # if it's the first encounter, record the intercept bearing
+                    #     self.interceptBearing = checkObstacle.obstacleBearing
+                    if self.encountered == 0:
+                        checkObstacle.obstacleFound = 1
+                        flight_bearing = getBearingGood(currentLocation, gotoGuardian3.targetLocation)
+                        checkObstacle.intercept_out = distance_to_intercept(currentLocation, checkObstacle.obstacleLocation,
+                                                                        checkObstacle.avoidRadius, flight_bearing)
+                        self.encountered = 1
 
                 else:
-                    checkObstacle.obstacleSlow = 0
+                    checkObstacle.obstacleFound = 0
 
                 self.lastRunTime = dt.datetime.now()
 
