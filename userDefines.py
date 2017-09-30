@@ -2,11 +2,11 @@
 # Author: Richard Arthurs
 import importInterop
 
-defaultVelocity = 4 # this velocity is split into North and East components to control direction of copter
+defaultVelocity = 7 # this velocity is split into North and East components to control direction of copter
 
 UDPPort = "127.0.0.1:14540"
 
-usingInterop = 1
+usingInterop = 0
 startWpNum = 0 # start at zero for normal mission
 
 if usingInterop:
@@ -18,7 +18,7 @@ waypointReachedDistance = 2     # if we are within this many metres of waypoint,
 
 # -------------------- OBSTACLE AVOIDANCE --------------------
 obstacle_avoidRadius = 40   # if we are within this many metres from obstacle point, we will avoid it
-gotoExitDistance = 110 #when we're this far from the exit wp, we will goto it. Allow lots of room
+gotoExitDistance = 120 #when we're this far from the exit wp, we will goto it. Allow lots of room
 circleSpeed = 2 # speed to do circle. Slow so we don't overshoot
 obstacle_gotoInterceptDistance = 110 # if we're within this distance to obstacle, will goto intercept wp
 
@@ -65,6 +65,9 @@ emergentLong = -122.795433
 # obstacleLon = -122.796990
 # obstacleAlt = 30
 
+# emergentLat = 49.129124
+# emergentLong = -122.795433
+
 # ------------------------  default tester mission ------------------------
 # lats = [49.128695,49.1294287000000]
 # longs = [-122.800132, -122.796303000000]
@@ -75,4 +78,5 @@ emergentLong = -122.795433
 # obstacleLon = -122.798044
 # obstacleAlt = 30
 
-
+# emergentLat = 49.129124
+# emergentLong = -122.795433

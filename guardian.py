@@ -75,7 +75,7 @@ def createFlightData():
         baseAlts.append(emergent_searchAltitude)
 
 
-        emergent_waypoints = emergent2.calcEmergentSearch(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius,emergent_numSpirals)
+        emergent_waypoints = emergent.calcEmergentSearch(missionDict['emergent_lat'], missionDict['emergent_long'], emergent_searchAltitude, emergent_searchRadius,emergent_numSpirals)
         baseLats.extend(emergent_waypoints['lats'])
         baseLongs.extend(emergent_waypoints['longs'])
         baseAlts.extend(emergent_waypoints['alts'])
@@ -84,7 +84,7 @@ def createFlightData():
 
     else:  # using built in values
         emergentFirstWP = len(lats) + 1
-        emergent_waypoints = emergent.calcEmergent(emergentLat, emergentLong, emergent_searchAltitude, emergent_searchRadius)
+        emergent_waypoints = emergent2.calcEmergentSearch(emergentLat, emergentLong, emergent_searchAltitude, emergent_searchRadius, emergent_numSpirals)
 
         lats.extend(emergent_waypoints['lats'])
         longs.extend(emergent_waypoints['longs'])
@@ -274,7 +274,7 @@ class gotoGuardian3(mthread.MicroThread):
                     self.vehicle.simple_goto(interceptLocation)
                     self.encountered = 1
 
-                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation) > waypointReachedDistance:
+                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation) > 5:
                         print "Distance to intercept waypoint: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, interceptLocation)
                         self.vehicle.simple_goto(interceptLocation) # resend since connection sometimes drops
                         time.sleep(0.5)
@@ -284,9 +284,10 @@ class gotoGuardian3(mthread.MicroThread):
 
                     deriv_ExitDistance = 100
                     prev_ExitDistance = 1000
+                    print "Exit location distance: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation)
 
                     while dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation) > gotoExitDistance:
-                        if deriv_ExitDistance > 0:
+                        if deriv_ExitDistance > -30:
                             print "Velocity control - obstacle avoidance"
                             exitDistance = dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation)
                             print " Distance to exit waypoint:", exitDistance
@@ -307,7 +308,7 @@ class gotoGuardian3(mthread.MicroThread):
                     print "Going to exit waypoint!"
                     self.vehicle.simple_goto(exitLocation)
 
-                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation) > waypointReachedDistance:
+                    while dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation) > 5:
                         print "Distance to exit waypoint: ", dk.get_distance_metres(self.vehicle.location.global_relative_frame, exitLocation)
                         self.vehicle.simple_goto(exitLocation)
                         time.sleep(0.5)

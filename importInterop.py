@@ -14,8 +14,8 @@ def importFromInterop():
 
     # if __name__ == '__main__':
 
-    # server = "http://192.168.0.197:8000"
-    server = "http://142.58.180.205:8000"
+    server = "http://192.168.0.197:8000"
+    # server = "http://142.58.180.205:8000"
 
     username = 'testuser'
     password = 'testpass'

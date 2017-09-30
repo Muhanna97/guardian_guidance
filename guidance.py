@@ -7,14 +7,10 @@ import scheduler
 import userDefines
 import importInterop
 
+#connect to the drone and get the handle
 mydrone = connectToDrone.makeConnection()
 print mydrone
 print mydrone.mode
-
-
-# print "\nPrint all parameters (iterate `vehicle.parameters`):"
-# for key, value in mydrone.parameters.iteritems():
-#     print " Key:%s Value:%s" % (key,value)
 
 # print userDefines.missionDict
 
@@ -39,5 +35,5 @@ ms.add_microthread(mt1)
 ms.add_microthread(mt2)
 
 # run the threads - currently no exit from this
-# ctrl+c the script to kill it
+# ctrl+c the script to kill it :)
 ms.run()
